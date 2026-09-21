@@ -5,3 +5,8 @@ services:
     restart: unless-stopped
     env_file:
       - .env
+    healthcheck:
+      test: ["CMD", "python", "-c", "import os; raise SystemExit(0 if os.getenv('TELEGRAM_BOT_TOKEN') and os.getenv('OPENAI_API_KEY') else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
