@@ -4,6 +4,7 @@ from telegram.ext import Application, CommandHandler, ContextTypes
 from app.ai import analyze_news
 from app.config import settings
 from app.news import fetch_news
+from app.scheduler import start_scheduler
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -13,11 +14,22 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text(
         "Привет! 👋\n\n"
         "Я бот мировых новостей и их влияния на крипторынок.\n"
-        "Используй /today, чтобы получить AI-дайджест."
+        "Используй /today для AI-дайджеста.\n"
+        "Используй /chatid, чтобы узнать ID этого чата."
     )
 
 
-async def today(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def chatid(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if update.effective_chat is None or update.message is None:
+        return
+
+    await update.message.reply_text(
+        f"ID этого чата: {update.effective_chat.id}\n\n"
+        "Добавь это значение в TELEGRAM_CHAT_ID в файле .env."
+    )
+
+
+async def send_digest(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if update.message is None:
         return
 
@@ -32,13 +44,12 @@ async def today(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         )
         return
 
-    # Telegram message limit is about 4096 characters.
-    if len(digest) <= 4000:
-        await update.message.reply_text(digest)
-        return
-
     for start in range(0, len(digest), 4000):
         await update.message.reply_text(digest[start:start + 4000])
+
+
+def post_init(application: Application) -> None:
+    start_scheduler(application)
 
 
 def main() -> None:
@@ -48,9 +59,16 @@ def main() -> None:
             "Create .env and add your bot token."
         )
 
-    application = Application.builder().token(settings.telegram_bot_token).build()
+    application = (
+        Application.builder()
+        .token(settings.telegram_bot_token)
+        .post_init(post_init)
+        .build()
+    )
+
     application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("today", today))
+    application.add_handler(CommandHandler("chatid", chatid))
+    application.add_handler(CommandHandler("today", send_digest))
 
     print("Telegram bot is running...")
     application.run_polling()
