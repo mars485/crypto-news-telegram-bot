@@ -1,6 +1,7 @@
 from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes
 
+from app.ai import analyze_news
 from app.config import settings
 from app.news import fetch_news
 
@@ -12,7 +13,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text(
         "Привет! 👋\n\n"
         "Я бот мировых новостей и их влияния на крипторынок.\n"
-        "Используй /today, чтобы получить последние новости."
+        "Используй /today, чтобы получить AI-дайджест."
     )
 
 
@@ -20,29 +21,24 @@ async def today(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if update.message is None:
         return
 
-    await update.message.reply_text("Собираю последние новости... 📰")
+    await update.message.reply_text("Собираю новости и готовлю AI-анализ... 🤖📰")
 
-    news = fetch_news(limit=10)
-
-    if not news:
+    try:
+        news = fetch_news(limit=20)
+        digest = analyze_news(news)
+    except Exception as exc:
         await update.message.reply_text(
-            "Не удалось получить новости. Попробуй ещё раз позже."
+            f"Не удалось подготовить дайджест.\n\nОшибка: {exc}"
         )
         return
 
-    lines = ["📰 Последние новости\n"]
+    # Telegram message limit is about 4096 characters.
+    if len(digest) <= 4000:
+        await update.message.reply_text(digest)
+        return
 
-    for index, item in enumerate(news, start=1):
-        lines.append(
-            f"{index}. {item.title}\n"
-            f"Источник: {item.source}\n"
-            f"{item.url}\n"
-        )
-
-    message = "\n".join(lines)
-
-    # Telegram has a message limit of about 4096 characters.
-    await update.message.reply_text(message[:4000])
+    for start in range(0, len(digest), 4000):
+        await update.message.reply_text(digest[start:start + 4000])
 
 
 def main() -> None:
