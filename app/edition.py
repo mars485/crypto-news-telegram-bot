@@ -11,6 +11,7 @@ from app.news import NewsItem
 @dataclass(frozen=True)
 class Story:
     article: NewsItem
+    title_ru: str
     summary: str
     impact: str
     emoji: str
@@ -35,10 +36,10 @@ def build_edition(news: list[NewsItem]) -> Edition:
         input=(
             "Ты редактор новостного Telegram-канала о мировой экономике и криптовалютах. "
             "Верни ТОЛЬКО JSON без Markdown: "
-            '{"stories":[{"id":0,"summary":"...","impact":"...","emoji":"🌍"}],'
+            '{"stories":[{"id":0,"title_ru":"...","summary":"...","impact":"...","emoji":"🌍"}],'
             '"conclusion":"..."} . '
             "Выбери до 5 самых значимых РАЗНЫХ новостей только из списка ниже. "
-            "id — строго номер из списка. summary: 2-3 предложения по-русски, "
+             "id — строго номер из списка. title_ru: точный, лаконичный перевод заголовка на русский язык без новых фактов. summary: 2-3 предложения по-русски, "
             "только факты, подтверждаемые заголовком; не додумывай подробности. "
             "impact: 1-2 предложения об условном влиянии на BTC/ETH/рынок с неопределённостью. "
             "emoji: 1-2 подходящих эмодзи. conclusion: 3-5 предложений, "
@@ -60,6 +61,7 @@ def build_edition(news: list[NewsItem]) -> Edition:
         seen.add(index)
         stories.append(Story(
             article=allowed[index],
+            title_ru=str(entry.get('title_ru', '')).strip()[:180] or allowed[index].title,
             summary=str(entry.get("summary", "")).strip()[:1300],
             impact=str(entry.get("impact", "")).strip()[:600],
             emoji=str(entry.get("emoji", "📰")).strip()[:8],
