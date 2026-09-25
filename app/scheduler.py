@@ -10,7 +10,7 @@ from app.config import settings
 
 async def daily_digest_job(context: ContextTypes.DEFAULT_TYPE) -> None:
     """Generate and send the daily digest to the configured chat."""
-    from app.ai import analyze_news
+    from app.ai import analyze_news, telegram_digest_parts
     from app.news import fetch_news
 
     if not settings.telegram_chat_id:
@@ -22,10 +22,12 @@ async def daily_digest_job(context: ContextTypes.DEFAULT_TYPE) -> None:
         if not digest:
             digest = "За последние сутки подходящих новостей не найдено."
 
-        for start in range(0, len(digest), 4000):
+        for text, parse_mode in telegram_digest_parts(digest):
             await context.bot.send_message(
                 chat_id=settings.telegram_chat_id,
-                text=digest[start:start + 4000],
+                text=text,
+                parse_mode=parse_mode,
+                disable_web_page_preview=True,
             )
     except Exception as exc:
         await context.bot.send_message(
