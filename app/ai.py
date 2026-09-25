@@ -1,6 +1,6 @@
 """AI analysis of news and potential crypto-market impact."""
 
-from html import unescape
+from html import escape, unescape
 from html.parser import HTMLParser
 
 from openai import OpenAI
@@ -65,7 +65,16 @@ def analyze_news(news_items: list[NewsItem]) -> str:
         input=prompt,
     )
 
-    return response.output_text.strip()
+    result = response.output_text.strip()
+    # Always include verified publisher URLs directly from RSS.
+    source_lines = ["", "🔗 <b>ПЕРВОИСТОЧНИКИ</b>"]
+    for number, item in enumerate(news_items[:5], 1):
+        url = escape(item.url, quote=True)
+        title = escape(item.title[:75])
+        source_lines.append(
+            f'📎 {number:02d} · <a href="{url}">{title}</a>'
+        )
+    return result + "\\n".join(source_lines)
 
 
 class _PlainTextParser(HTMLParser):
