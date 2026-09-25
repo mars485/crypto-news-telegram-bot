@@ -21,7 +21,6 @@ logger = logging.getLogger(__name__)
 def main_menu() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("📰 Получить дайджест", callback_data="digest")],
-        [InlineKeyboardButton("ℹ️ Помощь", callback_data="help")],
     ])
 
 
@@ -34,14 +33,6 @@ def count_menu() -> InlineKeyboardMarkup:
         ],
         [InlineKeyboardButton("⬅️ Назад", callback_data="menu")],
     ])
-
-
-HELP_TEXT = (
-    "Доступные действия:\n"
-    "📰 Получить дайджест — выбор 1, 5 или 10 новостей с AI-анализом.\n"
-    "ℹ️ Помощь — это меню.\n\n"
-    "Команды: /start, /menu, /today, /chatid."
-)
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -115,10 +106,6 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     elif query.data == "menu" and update.effective_chat is not None:
         await context.bot.send_message(
             update.effective_chat.id, "Главное меню:", reply_markup=main_menu(),
-        )
-    elif query.data == "help" and update.effective_chat is not None:
-        await context.bot.send_message(
-            update.effective_chat.id, HELP_TEXT, reply_markup=main_menu()
         )
 
 
