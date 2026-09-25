@@ -25,9 +25,20 @@ def main_menu() -> InlineKeyboardMarkup:
     ])
 
 
+def count_menu() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("1️⃣ 1 новость", callback_data="digest:1"),
+            InlineKeyboardButton("5️⃣ 5 новостей", callback_data="digest:5"),
+            InlineKeyboardButton("🔟 10 новостей", callback_data="digest:10"),
+        ],
+        [InlineKeyboardButton("⬅️ Назад", callback_data="menu")],
+    ])
+
+
 HELP_TEXT = (
     "Доступные действия:\n"
-    "📰 Получить дайджест — мировые новости и AI-анализ крипторынка.\n"
+    "📰 Получить дайджест — выбор 1, 5 или 10 новостей с AI-анализом.\n"
     "ℹ️ Помощь — это меню.\n\n"
     "Команды: /start, /menu, /today, /chatid."
 )
@@ -58,7 +69,7 @@ async def chatid(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     )
 
 
-async def send_digest(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def send_digest(update: Update, context: ContextTypes.DEFAULT_TYPE, count: int = 5) -> None:
     if update.effective_chat is None:
         return
     chat_id = update.effective_chat.id
@@ -74,7 +85,7 @@ async def send_digest(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         news = await asyncio.to_thread(fetch_news, limit=20)
         logger.info("Digest RSS stage: %.1fs, %d articles", time.monotonic() - started, len(news))
         started = time.monotonic()
-        edition = await asyncio.to_thread(build_edition, news)
+        edition = await asyncio.to_thread(build_edition, news, count)
         logger.info("Edition AI stage: %.1fs", time.monotonic() - started)
         await publish_edition(context.bot, chat_id, edition)
         await context.bot.send_message(chat_id, "Готово. Выбери действие:", reply_markup=main_menu())
@@ -94,8 +105,17 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     if query is None:
         return
     await query.answer()
-    if query.data == "digest":
-        await send_digest(update, context)
+    if query.data == "digest" and update.effective_chat is not None:
+        await context.bot.send_message(
+            update.effective_chat.id, "📰 <b>Сколько новостей подготовить?</b>",
+            parse_mode="HTML", reply_markup=count_menu(),
+        )
+    elif query.data in ("digest:1", "digest:5", "digest:10"):
+        await send_digest(update, context, int(query.data.split(":")[1]))
+    elif query.data == "menu" and update.effective_chat is not None:
+        await context.bot.send_message(
+            update.effective_chat.id, "Главное меню:", reply_markup=main_menu(),
+        )
     elif query.data == "help" and update.effective_chat is not None:
         await context.bot.send_message(
             update.effective_chat.id, HELP_TEXT, reply_markup=main_menu()
