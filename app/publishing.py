@@ -16,7 +16,7 @@ async def publish_edition(bot, chat_id: int, edition: Edition) -> None:
         return
     for number, story in enumerate(edition.stories, 1):
         article = story.article
-        title = escape(article.title)
+        title = escape(story.title_ru)
         summary = escape(story.summary)
         impact = escape(story.impact)
         source = escape(article.source)
