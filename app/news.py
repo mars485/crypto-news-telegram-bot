@@ -19,6 +19,7 @@ class NewsItem:
     url: str
     source: str
     published_at: datetime | None
+    image_url: str | None = None
 
 RSS_FEEDS = {
     "BBC": "https://feeds.bbci.co.uk/news/world/rss.xml",
@@ -71,7 +72,7 @@ def fetch_news(limit: int = 20, hours: int = 24) -> list[NewsItem]:
                 if published_at is None or published_at < cutoff:
                     continue
                 seen_urls.add(url)
-                items.append(NewsItem(title, url, source, published_at))
+                items.append(NewsItem(title, url, source, published_at, next((m.get('url') for m in entry.get('media_content', []) + entry.get('media_thumbnail', []) if m.get('url', '').startswith('https://')), None)))
 
     if successful_feeds == 0:
         raise RuntimeError("All RSS sources are unavailable")
