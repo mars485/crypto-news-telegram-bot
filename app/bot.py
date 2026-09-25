@@ -48,7 +48,7 @@ async def send_digest(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         await update.message.reply_text(digest[start:start + 4000])
 
 
-def post_init(application: Application) -> None:
+async def post_init(application: Application) -> None:
     start_scheduler(application)
 
 
