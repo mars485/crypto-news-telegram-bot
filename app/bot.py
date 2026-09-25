@@ -72,6 +72,17 @@ async def send_digest(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         started = time.monotonic()
         news = await asyncio.to_thread(fetch_news, limit=20)
         logger.info("Digest RSS stage: %.1fs, %d articles", time.monotonic() - started, len(news))
+        # Publisher-provided illustration; image failures never block the digest.
+        image_item = next((item for item in news if item.image_url), None)
+        if image_item:
+            try:
+                await context.bot.send_photo(
+                    chat_id, photo=image_item.image_url,
+                    caption="🌍 📰 <b>МИРОВЫЕ НОВОСТИ • CRYPTO</b> 📈 🚀",
+                    parse_mode="HTML",
+                )
+            except Exception:
+                logger.warning("RSS illustration could not be sent", exc_info=True)
         started = time.monotonic()
         digest = await asyncio.to_thread(analyze_news, news)
         logger.info("Digest AI stage: %.1fs", time.monotonic() - started)
