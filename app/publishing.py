@@ -5,6 +5,7 @@ from html import escape
 from telegram.error import TelegramError
 
 from app.edition import Edition
+from app.graphics import branded_image
 
 logger = logging.getLogger(__name__)
 
@@ -43,10 +44,12 @@ async def publish_edition(bot, chat_id: int, edition: Edition) -> None:
                 continue
             except TelegramError:
                 logger.warning("Article photo unavailable: %s", article.source, exc_info=True)
-        # No publisher photo: show Telegram's article preview when available.
+        # Always attach a branded fallback image if the publisher image is absent.
+        with branded_image() as fallback:
+            await bot.send_photo(chat_id=chat_id, photo=fallback)
         await bot.send_message(
             chat_id=chat_id, text=caption, parse_mode="HTML",
-            disable_web_page_preview=False,
+            disable_web_page_preview=True,
         )
 
     await bot.send_message(
