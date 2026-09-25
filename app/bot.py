@@ -9,7 +9,8 @@ from telegram.ext import (
     Application, CallbackQueryHandler, CommandHandler, ContextTypes,
 )
 
-from app.ai import analyze_news, telegram_digest_parts
+from app.edition import build_edition
+from app.publishing import publish_edition
 from app.config import settings
 from app.news import fetch_news
 from app.scheduler import start_scheduler
@@ -72,22 +73,10 @@ async def send_digest(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         started = time.monotonic()
         news = await asyncio.to_thread(fetch_news, limit=20)
         logger.info("Digest RSS stage: %.1fs, %d articles", time.monotonic() - started, len(news))
-        # Publisher-provided illustration; image failures never block the digest.
-        image_item = next((item for item in news if item.image_url), None)
-        if image_item:
-            try:
-                await context.bot.send_photo(
-                    chat_id, photo=image_item.image_url,
-                    caption="🌍 📰 <b>МИРОВЫЕ НОВОСТИ • CRYPTO</b> 📈 🚀",
-                    parse_mode="HTML",
-                )
-            except Exception:
-                logger.warning("RSS illustration could not be sent", exc_info=True)
         started = time.monotonic()
-        digest = await asyncio.to_thread(analyze_news, news)
-        logger.info("Digest AI stage: %.1fs", time.monotonic() - started)
-        for text, parse_mode in telegram_digest_parts(digest):
-            await context.bot.send_message(chat_id, text, parse_mode=parse_mode, disable_web_page_preview=True)
+        edition = await asyncio.to_thread(build_edition, news)
+        logger.info("Edition AI stage: %.1fs", time.monotonic() - started)
+        await publish_edition(context.bot, chat_id, edition)
         await context.bot.send_message(chat_id, "Готово. Выбери действие:", reply_markup=main_menu())
     except Exception:
         logger.exception("Digest generation or delivery failed")
