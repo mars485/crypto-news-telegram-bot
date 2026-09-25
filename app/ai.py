@@ -90,15 +90,24 @@ class _PlainTextParser(HTMLParser):
 
 
 def telegram_digest_parts(digest: str) -> list[tuple[str, str | None]]:
-    """Keep HTML formatting for short posts; safely fall back to plain text for long posts.
+    """Keep verified source links as a separate HTML message, even for long posts."""
+    marker = "🔗 <b>ПЕРВОИСТОЧНИКИ</b>"
+    if marker in digest:
+        article, sources = digest.rsplit(marker, 1)
+        source_message = marker + sources
+    else:
+        article, source_message = digest, ""
 
-    Telegram's message limit is 4096 characters after parsing. Keeping a margin
-    avoids breaking HTML tags and links across messages.
-    """
-    digest = digest.strip()
-    if len(digest) <= 3800:
-        return [(digest, "HTML")]
-    parser = _PlainTextParser()
-    parser.feed(digest)
-    plain = unescape("".join(parser.parts))
-    return [(plain[i:i + 3800], None) for i in range(0, len(plain), 3800)]
+    article = article.strip()
+    parts: list[tuple[str, str | None]] = []
+    if len(article) <= 3800:
+        parts.append((article, "HTML"))
+    else:
+        parser = _PlainTextParser()
+        parser.feed(article)
+        plain = unescape("".join(parser.parts))
+        parts.extend((plain[i:i + 3800], None) for i in range(0, len(plain), 3800))
+
+    if source_message:
+        parts.append((source_message, "HTML"))
+    return parts
