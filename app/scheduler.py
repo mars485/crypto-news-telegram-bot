@@ -1,5 +1,7 @@
 """Daily Telegram digest scheduler."""
 
+import asyncio
+import logging
 from datetime import time
 from zoneinfo import ZoneInfo
 
@@ -10,41 +12,22 @@ from app.config import settings
 
 async def daily_digest_job(context: ContextTypes.DEFAULT_TYPE) -> None:
     """Generate and send the daily digest to the configured chat."""
-    from app.ai import analyze_news, telegram_digest_parts
+    from app.edition import build_edition
     from app.news import fetch_news
+    from app.publishing import publish_edition
 
     if not settings.telegram_chat_id:
         return
 
     try:
-        news = fetch_news(limit=20)
-        image_item = next((item for item in news if item.image_url), None)
-        if image_item:
-            try:
-                await context.bot.send_photo(
-                    chat_id=settings.telegram_chat_id,
-                    photo=image_item.image_url,
-                    caption="🌍 📰 <b>МИРОВЫЕ НОВОСТИ • CRYPTO</b> 📈 🚀",
-                    parse_mode="HTML",
-                )
-            except Exception:
-                import logging
-                logging.getLogger(__name__).warning("RSS illustration could not be sent", exc_info=True)
-        digest = analyze_news(news)
-        if not digest:
-            digest = "За последние сутки подходящих новостей не найдено."
-
-        for text, parse_mode in telegram_digest_parts(digest):
-            await context.bot.send_message(
-                chat_id=settings.telegram_chat_id,
-                text=text,
-                parse_mode=parse_mode,
-                disable_web_page_preview=True,
-            )
-    except Exception as exc:
+        news = await asyncio.to_thread(fetch_news, limit=20)
+        edition = await asyncio.to_thread(build_edition, news)
+        await publish_edition(context.bot, settings.telegram_chat_id, edition)
+    except Exception:
+        logging.getLogger(__name__).exception("Scheduled edition failed")
         await context.bot.send_message(
             chat_id=settings.telegram_chat_id,
-            text=f"Не удалось подготовить ежедневный дайджест.\n\nОшибка: {exc}",
+            text="Не удалось подготовить ежедневный дайджест. Подробности в журнале сервера.",
         )
 
 
