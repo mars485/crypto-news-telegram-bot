@@ -9,7 +9,7 @@ from telegram.ext import (
     Application, CallbackQueryHandler, CommandHandler, ContextTypes,
 )
 
-from app.ai import analyze_news
+from app.ai import analyze_news, telegram_digest_parts
 from app.config import settings
 from app.news import fetch_news
 from app.scheduler import start_scheduler
@@ -75,8 +75,8 @@ async def send_digest(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         started = time.monotonic()
         digest = await asyncio.to_thread(analyze_news, news)
         logger.info("Digest AI stage: %.1fs", time.monotonic() - started)
-        for offset in range(0, len(digest), 4000):
-            await context.bot.send_message(chat_id, digest[offset:offset + 4000])
+        for text, parse_mode in telegram_digest_parts(digest):
+            await context.bot.send_message(chat_id, text, parse_mode=parse_mode, disable_web_page_preview=True)
         await context.bot.send_message(chat_id, "Готово. Выбери действие:", reply_markup=main_menu())
     except Exception:
         logger.exception("Digest generation or delivery failed")
