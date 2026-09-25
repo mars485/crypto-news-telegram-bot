@@ -1,5 +1,8 @@
 """AI analysis of news and potential crypto-market impact."""
 
+from html import unescape
+from html.parser import HTMLParser
+
 from openai import OpenAI
 
 from app.config import settings
@@ -63,3 +66,30 @@ def analyze_news(news_items: list[NewsItem]) -> str:
     )
 
     return response.output_text.strip()
+
+
+class _PlainTextParser(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.parts: list[str] = []
+
+    def handle_data(self, data: str) -> None:
+        self.parts.append(data)
+
+    def handle_entityref(self, name: str) -> None:
+        self.parts.append(unescape("&" + name + ";"))
+
+
+def telegram_digest_parts(digest: str) -> list[tuple[str, str | None]]:
+    """Keep HTML formatting for short posts; safely fall back to plain text for long posts.
+
+    Telegram's message limit is 4096 characters after parsing. Keeping a margin
+    avoids breaking HTML tags and links across messages.
+    """
+    digest = digest.strip()
+    if len(digest) <= 3800:
+        return [(digest, "HTML")]
+    parser = _PlainTextParser()
+    parser.feed(digest)
+    plain = unescape("".join(parser.parts))
+    return [(plain[i:i + 3800], None) for i in range(0, len(plain), 3800)]
