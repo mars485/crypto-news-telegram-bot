@@ -20,15 +20,13 @@ logger = logging.getLogger(__name__)
 def main_menu() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("📰 Получить дайджест", callback_data="digest")],
-        [InlineKeyboardButton("🆔 ID чата", callback_data="chatid"),
-         InlineKeyboardButton("ℹ️ Помощь", callback_data="help")],
+        [InlineKeyboardButton("ℹ️ Помощь", callback_data="help")],
     ])
 
 
 HELP_TEXT = (
     "Доступные действия:\n"
     "📰 Получить дайджест — мировые новости и AI-анализ крипторынка.\n"
-    "🆔 ID чата — ID для настройки ежедневной рассылки.\n"
     "ℹ️ Помощь — это меню.\n\n"
     "Команды: /start, /menu, /today, /chatid."
 )
@@ -98,13 +96,6 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     await query.answer()
     if query.data == "digest":
         await send_digest(update, context)
-    elif query.data == "chatid" and update.effective_chat is not None:
-        await context.bot.send_message(
-            update.effective_chat.id,
-            f"ID этого чата: {update.effective_chat.id}\n\n"
-            "Добавь его в TELEGRAM_CHAT_ID в файле .env.",
-            reply_markup=main_menu(),
-        )
     elif query.data == "help" and update.effective_chat is not None:
         await context.bot.send_message(
             update.effective_chat.id, HELP_TEXT, reply_markup=main_menu()
