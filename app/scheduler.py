@@ -18,6 +18,18 @@ async def daily_digest_job(context: ContextTypes.DEFAULT_TYPE) -> None:
 
     try:
         news = fetch_news(limit=20)
+        image_item = next((item for item in news if item.image_url), None)
+        if image_item:
+            try:
+                await context.bot.send_photo(
+                    chat_id=settings.telegram_chat_id,
+                    photo=image_item.image_url,
+                    caption="🌍 📰 <b>МИРОВЫЕ НОВОСТИ • CRYPTO</b> 📈 🚀",
+                    parse_mode="HTML",
+                )
+            except Exception:
+                import logging
+                logging.getLogger(__name__).warning("RSS illustration could not be sent", exc_info=True)
         digest = analyze_news(news)
         if not digest:
             digest = "За последние сутки подходящих новостей не найдено."
