@@ -23,13 +23,15 @@ class Edition:
     conclusion: str
 
 
-def build_edition(news: list[NewsItem]) -> Edition:
+def build_edition(news: list[NewsItem], count: int = 5) -> Edition:
+    if count not in (1, 5, 10):
+        raise ValueError('count must be 1, 5, or 10')
     if not news:
         return Edition([], "За последние сутки подходящих новостей не найдено.")
     # Prefer articles with publisher-supplied illustrations so each post has its own image.
     illustrated = [(i, item) for i, item in enumerate(news) if item.image_url]
     candidates = illustrated if illustrated else list(enumerate(news))
-    candidates = candidates[:15]
+    candidates = candidates[:max(15, count)]
     entries = "\n".join(f"{i}: [{item.source}] {item.title}" for i, item in candidates)
     response = OpenAI(api_key=settings.openai_api_key, timeout=90).responses.create(
         model=MODEL,
@@ -38,7 +40,7 @@ def build_edition(news: list[NewsItem]) -> Edition:
             "Верни ТОЛЬКО JSON без Markdown: "
             '{"stories":[{"id":0,"title_ru":"...","summary":"...","impact":"...","emoji":"🌍"}],'
             '"conclusion":"..."} . '
-            "Выбери до 5 самых значимых РАЗНЫХ новостей только из списка ниже. "
+            f"Выбери до {count} самых значимых РАЗНЫХ новостей только из списка ниже. "
              "id — строго номер из списка. title_ru: точный, лаконичный перевод заголовка на русский язык без новых фактов. summary: 2-3 предложения по-русски, "
             "только факты, подтверждаемые заголовком; не додумывай подробности. "
             "impact: 1-2 предложения об условном влиянии на BTC/ETH/рынок с неопределённостью. "
@@ -66,7 +68,7 @@ def build_edition(news: list[NewsItem]) -> Edition:
             impact=str(entry.get("impact", "")).strip()[:600],
             emoji=str(entry.get("emoji", "📰")).strip()[:8],
         ))
-        if len(stories) == 5:
+        if len(stories) == count:
             break
     if not stories:
         raise ValueError("AI returned no valid stories")
